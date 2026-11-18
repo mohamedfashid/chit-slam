@@ -40,16 +40,6 @@ export function createGameServer({ timing, trustProxy = false, allowedOrigins = 
   if (trustProxy) app.set('trust proxy', 1);
   app.use(securityHeaders);
   app.get('/healthz', (req, res) => res.type('text').send('ok'));
-  // TEMPORARY: shows a visitor their own forwarding headers, to learn the proxy layout. Remove after.
-  app.get('/hdr-check-7f3a', (req, res) =>
-    res.json({
-      xff: req.headers['x-forwarded-for'] ?? null,
-      cf: req.headers['cf-connecting-ip'] ?? null,
-      tci: req.headers['true-client-ip'] ?? null,
-      xri: req.headers['x-real-ip'] ?? null,
-      remote: req.socket.remoteAddress,
-    }),
-  );
   app.use(express.static(PUBLIC_DIR, { maxAge: 0 }));
 
   const httpServer = createServer(app);
@@ -77,10 +67,11 @@ export function createGameServer({ timing, trustProxy = false, allowedOrigins = 
   const joinAttempts = new Map(); // ipHash -> { count, resetAt }
   const salt = randomBytes(16); // per-process; IPs are never stored in the clear
 
-  // Behind a proxy, find the visitor's real address. Cloudflare (in front of
-  // Render) sets CF-Connecting-IP itself and overwrites any value a visitor
-  // sends, so it can't be faked. X-Forwarded-For is only a fallback: proxies
-  // append to it, so its first entry is whatever the visitor claimed.
+  // Behind a proxy, find the visitor's real address. Checked live on Render:
+  // Cloudflare sets CF-Connecting-IP to the real address and refuses (403) any
+  // request that tries to send its own; True-Client-IP is overwritten too.
+  // X-Forwarded-For is only a fallback: a visitor's fake value is kept at the
+  // front ("fake, real, cloudflare, render-internal").
   const clientIp = (socket) => {
     if (trustProxy) {
       const h = socket.handshake.headers;
