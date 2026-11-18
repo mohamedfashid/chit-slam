@@ -67,9 +67,17 @@ export function createGameServer({ timing, trustProxy = false, allowedOrigins = 
   const joinAttempts = new Map(); // ipHash -> { count, resetAt }
   const salt = randomBytes(16); // per-process; IPs are never stored in the clear
 
+  // Behind a proxy, find the visitor's real address. Cloudflare (in front of
+  // Render) sets CF-Connecting-IP itself and overwrites any value a visitor
+  // sends, so it can't be faked. X-Forwarded-For is only a fallback: proxies
+  // append to it, so its first entry is whatever the visitor claimed.
   const clientIp = (socket) => {
     if (trustProxy) {
-      const fwd = socket.handshake.headers['x-forwarded-for'];
+      const h = socket.handshake.headers;
+      for (const name of ['cf-connecting-ip', 'true-client-ip']) {
+        if (typeof h[name] === 'string' && h[name].trim()) return h[name].trim();
+      }
+      const fwd = h['x-forwarded-for'];
       if (typeof fwd === 'string' && fwd) return fwd.split(',')[0].trim();
     }
     return socket.handshake.address || '';

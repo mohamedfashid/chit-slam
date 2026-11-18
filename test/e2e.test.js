@@ -170,6 +170,25 @@ test('host lock keeps new people out; kick removes a player', async () => {
   assert.match((await c.emit('join', { code, name: 'Stranger' })).error, /locked/);
 });
 
+test('behind Cloudflare, a faked X-Forwarded-For cannot dodge the join limit', async () => {
+  const proxied = createGameServer({ trustProxy: true });
+  const port = await proxied.listen(0, '127.0.0.1');
+  const purl = `http://127.0.0.1:${port}`;
+  let limited = 0;
+  for (let i = 0; i < 24; i++) {
+    const s = connect(purl, {
+      transports: ['websocket'],
+      forceNew: true,
+      extraHeaders: { 'CF-Connecting-IP': '198.51.100.7', 'X-Forwarded-For': `203.0.113.${i + 1}, 10.0.0.1` },
+    });
+    const r = await new Promise((resolve) => s.emit('join', { code: 'ZZZZZZ', name: 'x' }, resolve));
+    if (/Too many/.test(r.error || '')) limited++;
+    s.disconnect();
+  }
+  await proxied.close();
+  assert.equal(limited, 4, 'attempts 21-24 are refused');
+});
+
 test('bad payloads are rejected without crashing the server', async () => {
   const a = client();
   await a.emit('create', { name: 'Tester' });
