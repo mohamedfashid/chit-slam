@@ -1,0 +1,15 @@
+# Render Blueprint: one free web service running the game server.
+services:
+  - type: web
+    name: chit-slam
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: TRUST_PROXY
+        value: "1"

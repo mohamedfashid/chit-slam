@@ -1,0 +1,22 @@
+{
+  "name": "chit-slam",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chit Slam - the childhood chit-passing game, online with friends. Pass chits, make a set, slam the floor, don't be last.",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.1"
+  }
+}

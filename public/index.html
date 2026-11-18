@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Chit Slam</title>
+  <meta name="description" content="The childhood chit-passing game, online with friends. Pass the chits, make a set, slam the floor - don't be the last hand.">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#efe6cf">
+  <meta name="color-scheme" content="light">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/socket.io/socket.io.min.js" defer></script>
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <main id="app">
+
+    <!-- HOME -->
+    <section id="home" class="screen">
+      <div class="brand">
+        <div id="hero-table" class="rt rt-hero" aria-hidden="true"></div>
+        <h1>Chit Slam</h1>
+        <p class="tagline">Pass the chits. Make a set. Slam the floor.<br>Don't be the last hand.</p>
+      </div>
+
+      <form id="home-form" class="paper card" autocomplete="off">
+        <label class="field">
+          <span>Your nickname</span>
+          <input id="name" maxlength="16" placeholder="What should friends call you?" spellcheck="false">
+        </label>
+        <button type="button" id="btn-create" class="btn btn-primary btn-big">Create a private room</button>
+        <div class="divider"><span>or join your friends</span></div>
+        <div class="join-row">
+          <input id="join-code" maxlength="6" placeholder="ROOM CODE" aria-label="Room code" autocapitalize="characters" spellcheck="false">
+          <button type="button" id="btn-join" class="btn">Join</button>
+        </div>
+        <p id="home-error" class="error" role="alert"></p>
+      </form>
+
+      <details class="paper card howto">
+        <summary>How to play</summary>
+        <ol>
+          <li>Everyone gets <b>3 folded chits</b>. Each word is written on 3 chits.</li>
+          <li>Turns go round the table. On <b>your turn</b> you hold 4 chits: <b>tap one</b> to pass it to the next player.</li>
+          <li>Got 3 of the same on your turn? Hit <b>BOOST!</b> to slam your hand on the floor. Quietly.</li>
+          <li>See a hand on the mat? <b>Slam yours on top, fast!</b> No turns now. Your place in the pile = your points.</li>
+          <li>The <b>last hand</b> gets a letter and starts the next round. Whoever spells <b>B-O-O-S-T</b> ends the game. Most points wins.</li>
+          <li>BOOST without a set costs <b>1 point</b>, and you still have to pass.</li>
+        </ol>
+      </details>
+      <p class="fineprint">No sign-up · No ads · No tracking · Rooms vanish when everyone leaves</p>
+    </section>
+
+    <!-- LOBBY -->
+    <section id="lobby" class="screen" hidden>
+      <header class="bar">
+        <button id="lobby-leave" class="btn btn-ghost btn-small" type="button">← Leave</button>
+        <span class="bar-title">Waiting room</span>
+        <span></span>
+      </header>
+
+      <div class="paper card invite">
+        <p class="label">Room code</p>
+        <p id="room-code" class="code">------</p>
+        <div class="invite-actions">
+          <button id="btn-copy" class="btn" type="button">Copy invite link</button>
+          <a id="btn-wa" class="btn btn-wa" target="_blank" rel="noopener noreferrer" href="#">Share on WhatsApp</a>
+        </div>
+        <label class="toggle host-only"><input type="checkbox" id="lock-room"> Lock room - no new players can join</label>
+        <p id="locked-note" class="hint guest-only" hidden>🔒 The host has locked this room.</p>
+      </div>
+
+      <div class="paper card">
+        <div class="card-head">
+          <h2>At the table <span id="player-count" class="muted"></span></h2>
+          <button id="btn-bot" class="btn btn-small host-only" type="button">+ Add bot</button>
+        </div>
+        <div id="lobby-table" class="rt rt-lobby"></div>
+        <ul id="lobby-players" class="player-list"></ul>
+      </div>
+
+      <div class="paper card">
+        <div class="card-head">
+          <h2>Your character</h2>
+          <button id="btn-reroll" class="btn btn-small" type="button">🎲 Random</button>
+        </div>
+        <div class="char-maker">
+          <div id="char-preview" class="char-preview" aria-hidden="true"></div>
+          <div id="char-parts" class="char-parts"></div>
+        </div>
+      </div>
+
+      <div class="paper card">
+        <h2>What's on the chits?</h2>
+        <div id="pack-grid" class="pack-grid"></div>
+        <div id="custom-box" hidden>
+          <label class="field">
+            <span>Write your own chits - one per line (family nicknames, inside jokes, anything!)</span>
+            <textarea id="custom-items" rows="6" maxlength="1200" spellcheck="false"></textarea>
+          </label>
+          <p id="custom-count" class="hint"></p>
+        </div>
+        <div class="setsize">
+          <span>Chits per hand</span>
+          <div class="seg" data-setting="setSize" role="group" aria-label="Chits per hand">
+            <button type="button" data-v="3">3</button>
+            <button type="button" data-v="4">4</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="paper card">
+        <h2>Pace</h2>
+        <div class="setsize">
+          <span>Turn timer <small class="muted">(friends only)</small></span>
+          <div class="seg" data-setting="turnSecs" role="group" aria-label="Turn timer">
+            <button type="button" data-v="10">10s</button>
+            <button type="button" data-v="15">15s</button>
+            <button type="button" data-v="20">20s</button>
+            <button type="button" data-v="30">30s</button>
+          </div>
+        </div>
+        <div class="setsize">
+          <span>Bot speed</span>
+          <div class="seg" data-setting="botSpeed" role="group" aria-label="Bot speed">
+            <button type="button" data-v="relaxed">Relaxed</button>
+            <button type="button" data-v="normal">Normal</button>
+            <button type="button" data-v="fast">Fast</button>
+          </div>
+        </div>
+        <p class="hint">Playing alone with bots? There's no timer: the game waits for you.</p>
+      </div>
+
+      <div class="start-area">
+        <button id="btn-start" class="btn btn-primary btn-big host-only" type="button">Start game</button>
+        <p id="start-hint" class="hint"></p>
+      </div>
+    </section>
+
+    <!-- GAME -->
+    <section id="game" class="screen" hidden>
+      <header class="bar">
+        <button id="game-leave" class="btn btn-ghost btn-small" type="button">Leave</button>
+        <span id="round-label" class="bar-title"></span>
+        <button id="btn-mute" class="btn btn-ghost btn-small" type="button" aria-label="Toggle sound">🔊</button>
+      </header>
+      <div id="table" class="rt rt-game"></div>
+      <p id="watchers" class="hint watchers"></p>
+      <p id="flow" class="flow"></p>
+      <p id="away-note" class="away-note" hidden>💤 The timer passed for you twice, so you're marked away. Tap anywhere to come back.</p>
+      <div id="hand" class="hand"></div>
+      <div class="actions">
+        <button id="btn-slam" class="slam" type="button"><span class="slam-hand" aria-hidden="true">✋</span><span>BOOST!</span></button>
+      </div>
+      <p class="hint keys">On your turn, tap a chit to pass it · Keyboard: 1-5 to pass, Space to slam</p>
+    </section>
+  </main>
+
+  <div id="overlay" class="overlay" hidden><div id="sheet" class="paper sheet"></div></div>
+  <div id="conn" class="conn" hidden>Reconnecting…</div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
