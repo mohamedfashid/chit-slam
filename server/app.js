@@ -40,6 +40,16 @@ export function createGameServer({ timing, trustProxy = false, allowedOrigins = 
   if (trustProxy) app.set('trust proxy', 1);
   app.use(securityHeaders);
   app.get('/healthz', (req, res) => res.type('text').send('ok'));
+  // TEMPORARY: shows a visitor their own forwarding headers, to learn the proxy layout. Remove after.
+  app.get('/hdr-check-7f3a', (req, res) =>
+    res.json({
+      xff: req.headers['x-forwarded-for'] ?? null,
+      cf: req.headers['cf-connecting-ip'] ?? null,
+      tci: req.headers['true-client-ip'] ?? null,
+      xri: req.headers['x-real-ip'] ?? null,
+      remote: req.socket.remoteAddress,
+    }),
+  );
   app.use(express.static(PUBLIC_DIR, { maxAge: 0 }));
 
   const httpServer = createServer(app);
